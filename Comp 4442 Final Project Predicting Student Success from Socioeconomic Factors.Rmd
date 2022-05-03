@@ -1,0 +1,170 @@
+---
+title: "Comp 4442 Final Project"
+author: "Luke Sonnanburg"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+#install.packages('fastDummies')
+#install.packages('ggcorrplot')
+#install.packages(c("FactoMineR", "factoextra"))
+#install.packages('GPArotation')
+library(GPArotation)
+library("FactoMineR")
+library("factoextra")
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(gapminder)
+library(leaps)
+library(glmnet)
+library(ggplot2)
+library(MASS)
+library(usdm)
+library(car)
+library(corrplot)
+library(texreg)
+library(MPV)
+library(caret)
+library(glmnet)
+library(psych)
+library(tidyverse)
+library(broom)
+library(fastDummies)
+library(ggcorrplot)
+library(glmnet)
+
+```
+
+## Project Overview
+```{r, include= FALSE}
+# Importing Data
+math<-read.csv("student-mat.csv", sep = ';') # Student data and scores in math
+port<-read.csv("student-por.csv", sep = ';') # Student data and scors in portuguese 
+
+```
+
+```{r}
+math
+```
+
+```{r}
+math$avg <- (math$G1 + math$G2 + math$G3)/3
+math.grades <- math[,c(31:34)]
+boxplot(math.grades)
+
+```
+Getting data into the correct form
+```{r}
+math$school <- as.numeric(ifelse(math$school =="GP", 0, 1)) # Gabriel Pereira = 0, Mousinho da Silveira = 1
+math$sex <- as.numeric(ifelse(math$sex == "F", 0, 1)) # Female = 0, Male = 1
+math$address <- as.numeric(ifelse(math$address == "U", 0, 1)) # Urban = 0, Rural = 1
+math$famsize <- as.numeric(ifelse(math$famsize == "LE3", 0, 1)) # Less than 3 kids = 0, more = 1
+math$Pstatus <- as.numeric(ifelse(math$Pstatus == "T", 0, 1)) # Parents together = 0, parents apart = 1
+math$Medu <- as.numeric(ifelse(math$Medu == 4, 1,0))
+math$Fedu <- as.numeric(ifelse(math$Fedu == 4, 1,0))
+math$guardian <- as.numeric(ifelse(math$guardian == "other", 0, 1)) # recoding legal guardian as factors
+math$reason <- ifelse(math$reason %in% c('reputation','course'), 1,0 ) # 1 -> chose school for academic reasons
+math$schoolsup <- as.numeric(ifelse(math$schoolsup =="no", 0, 1))
+math$famsup <- as.numeric(ifelse(math$famsup =="no", 0, 1))
+math$paid <- as.numeric(ifelse(math$paid =="no", 0, 1))
+math$activities <- as.numeric(ifelse(math$activities =="no", 0, 1))
+math$nursery <- as.numeric(ifelse(math$nursery =="no", 0, 1))
+math$higher <- as.numeric(ifelse(math$higher =="no", 0, 1))
+math$internet <- as.numeric(ifelse(math$internet =="no", 0, 1))
+math$romantic <- as.numeric(ifelse(math$romantic =="no", 0, 1))
+math <- math[-c(9:10,31:33)]
+mathX <- math[-c(29)]
+mathY <- math$avg
+```
+
+The variable inflation factor is a measure of excessive multicollinearity that may be a cause for
+concern. The values here are small enough not to worry about.
+```{r}
+naive.model <- lm(avg~., data = math)
+vif(naive.model)
+par(mfrow = c(2, 2))
+plot(naive.model)
+```
+
+```{r fig.height = 8, fig.width = 8}
+math.cor <- cor(math)
+
+ggcorrplot(math.cor, title = 'Student Data Correlation Plot')
+```
+
+
+
+```{r}
+KMO(math.cor)
+```
+
+
+
+The skree plot shows eigenvalues of principal factors. Greater eigenvalues indicate that a factor
+explains more of the output variable's variance. 
+Generally eigenvalues >= 1 imply the factor explains more variance than a single variable would.
+In this case, the first two factors have eigenvalues >=1 and should obviously be included.
+A more subjective means of determining how many factors is where the scree plot levels off.
+In this case, the first place where the eigenvalues flatten (if only for a moment) is at 
+the fourth factor. Since adding factors until the next "leveling off" would result in 8
+factors where more are uninfluential than influential, I'll operate on the assumption of four
+factors being reasonable.
+
+(https://www.theanalysisfactor.com/factor-analysis-1-introduction/)
+
+```{r}
+parallel <- fa.parallel(mathX, fa='fa')
+parallel
+```
+While the scree plot for portuguese test data suggests 5 factors may be more appropriate,
+the ideal scenario would be if both data sets produced similar factor loadings to paint
+a picture of what a "successful" student looks like. For portuguese I'll proceed with 4 to 
+match math, but also experiment with 5.
+
+
+```{r}
+math.varimaxfit.4 <- fa(r=mathX, nfactors = 4, rotate="varimax",fm="pa")
+
+names(math.varimaxfit.4$loadings) <- c('a','b','c','d') 
+math.varimaxfit.4
+```
+```{r fig.height = 10, fig.width = 10}
+fa.diagram(math.varimaxfit.4)
+```
+
+
+
+```{r}
+math.varimaxfit.4$loadings
+
+```
+
+
+```{r}
+math.varimaxfit.5 <- fa(r=mathX, nfactors = 5, rotate="varimax",fm="pa")
+math.varimaxfit.5
+```
+```{r fig.height = 10, fig.width = 10}
+math.varimaxfit.4 <- fa(r=mathX, nfactors = 4, rotate="varimax",fm="pa")
+math.varimaxfit.4
+fa.diagram(math.varimaxfit.4)
+```
+
+
+
+
+
+
+
+```{r fig.height = 10, fig.width = 10}
+colnames(math.varimaxfit.4$loadings) <- c('Outgoing/Social', 'Academic Drive/Background', 'Hardship', 'Rural Location')
+math.varimaxfit.4$loadings
+fa.diagram(math.varimaxfit.4)
+```
+
+```{r}
+math.dat <- data.frame(math.varimaxfit.4$scores, math$avg)
+names(math.dat) <- c('Outgoing/Social', 'Academic Drive/Background', 'Hardship', 'Rural Location', 'Scores')
+math.dat
+```
