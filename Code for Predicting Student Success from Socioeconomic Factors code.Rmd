@@ -36,18 +36,17 @@ library(glmnet)
 
 ```
 
-## Project Overview
-```{r, include= FALSE}
-# Importing Data
-math<-read.csv("student-mat.csv", sep = ';') # Student data and scores in math
-port<-read.csv("student-por.csv", sep = ';') # Student data and scors in portuguese 
+This notebook was used for data exploration, analysis, and generating visualizations, but was not originally intended to be shared. See accompanying PDF for full discussion of results.
 
-```
-
+Loading in data
 ```{r}
-math
+# Importing Data
+math<-read.csv("~/GitHub/Predicting-Student-Success/student-mat.csv", sep = ';') # Student data and scores in math
+#port<-read.csv("~/student-por.csv", sep = ';') # Student data and scors in portuguese 
+
 ```
 
+Observing distribution of scores
 ```{r}
 math$avg <- (math$G1 + math$G2 + math$G3)/3
 math.grades <- math[,c(31:34)]
@@ -80,12 +79,18 @@ mathY <- math$avg
 
 The variable inflation factor is a measure of excessive multicollinearity that may be a cause for
 concern. The values here are small enough not to worry about.
+
+Checking assumptions for linear regression:
+
 ```{r}
 naive.model <- lm(avg~., data = math)
 vif(naive.model)
 par(mfrow = c(2, 2))
 plot(naive.model)
 ```
+Assumptions for linear regression are met within reasonable parameters, there doesn't seem to be any need for removing outliers or transforming data.
+
+Correlation between 
 
 ```{r fig.height = 8, fig.width = 8}
 math.cor <- cor(math)
@@ -94,11 +99,11 @@ ggcorrplot(math.cor, title = 'Student Data Correlation Plot')
 ```
 
 
-
+KMO factor adequacy is an indication of how suitable data is for factor analysis.
 ```{r}
 KMO(math.cor)
 ```
-
+Opinions are divided on what a good minimum is for considering the use of factor analysis. By all accounts, greater than 0.60 indicates factor analysis should yield usable results.
 
 
 The skree plot shows eigenvalues of principal factors. Greater eigenvalues indicate that a factor
@@ -163,8 +168,4 @@ math.varimaxfit.4$loadings
 fa.diagram(math.varimaxfit.4)
 ```
 
-```{r}
-math.dat <- data.frame(math.varimaxfit.4$scores, math$avg)
-names(math.dat) <- c('Outgoing/Social', 'Academic Drive/Background', 'Hardship', 'Rural Location', 'Scores')
-math.dat
-```
+
