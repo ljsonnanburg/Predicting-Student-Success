@@ -1,5 +1,5 @@
 # Predicting-Student-Success
-This was the final project for a graduate-level statistics course, applying factor analysis to data on data collected on students' socioeconomic circumsatances.
+This was the final project for a graduate-level statistics course, applying factor analysis to data on data collected on students' socioeconomic circumsatances in R.
 The results were unexciting; the methodology should be sound, factor analysis was simply a poor choice for the data.
 
 I would suggest looking at "Presentation for Predicting Student Success from Socioeconomic Factors.pdf" for a summary of the project.
